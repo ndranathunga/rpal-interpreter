@@ -27,6 +27,41 @@ std::string gettoken_typeName(token_type type)
     return "UNKNOWN";
 }
 
+// Function to check if Graphviz is installed
+bool isGraphvizInstalled()
+{
+// Redirect stderr to /dev/null or nul to discard error message
+#ifdef _WIN32
+    const char *redirectCommand = "2>nul";
+#else
+    const char *redirectCommand = "2>/dev/null";
+#endif
+
+    std::string command = "dot -V ";
+    command += redirectCommand;
+
+    int exitCode = system(command.c_str());
+    return (exitCode == 0);
+}
+
+// Function to print a warning message in yellow color with download link to Graphviz
+void printYellowWarning(const std::string &message)
+{
+    std::cout << "\033[1;33m" << message << "\033[0m";
+}
+
+// Function to print the warning message if Graphviz is not installed
+void printGraphvizWarning()
+{
+    std::string warningMessage = "WARNING: Graphviz is not installed on this computer.";
+    warningMessage += " Download Graphviz from: ";
+
+    printYellowWarning(warningMessage);
+
+    std::cout << "https://graphviz.org/download/\n"
+              << std::endl;
+}
+
 /**
  * Helper function to generate the dot file contents recursively.
  *
@@ -105,7 +140,7 @@ int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
-        std::cout << "Usage: .\\rpal20 input_file" << std::endl;
+        std::cout << "Usage: .\\rpal20 input_file [-visualize=VALUE]" << std::endl;
         return 1;
     }
 
@@ -119,6 +154,37 @@ int main(int argc, char *argv[])
     }
 
     std::string input((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    // Check if the "-visualize" argument is provided
+    std::string visualizeArg;
+    bool visualizeAst = false;
+    bool visualizeSt = false;
+
+    for (int i = 2; i < argc; ++i)
+    {
+        std::string arg(argv[i]);
+
+        if (arg == "-visualize")
+        {
+            visualizeAst = true;
+            visualizeSt = true;
+        }
+        else if (arg == "-visualize=ast")
+        {
+            visualizeAst = true;
+        }
+        else if (arg == "-visualize=st")
+        {
+            visualizeSt = true;
+        }
+    }
+
+    if (!isGraphvizInstalled())
+    {
+        printGraphvizWarning();
+        visualizeAst = false;
+        visualizeSt = false;
+    }
 
     Lexer lexer(input);
 
@@ -139,43 +205,47 @@ int main(int argc, char *argv[])
 
     TreeNode *root = Tree::getInstance().getASTRoot();
 
-    // release the memory from lexer and parser
+    if (visualizeAst)
+    {
+        // Generate the DOT file
+        generateDotFile(root, "ast.dot");
 
-    // Generate the DOT file
-    generateDotFile(root, "ast.dot");
+        // Tree::releaseASTMemory();
 
-    // Tree::releaseASTMemory();
+        // // Use Graphviz to generate the graph
+        // system("dot -Tpng Visualizations\\tree.dot -o Visualizations\\tree.png");
 
-    // // Use Graphviz to generate the graph
-    // system("dot -Tpng Visualizations\\tree.dot -o Visualizations\\tree.png");
+        // std::string dotFilePath = "\"D:\\Files\\Academics\\Semester 04\\PL\\RPAL_CLION\\Visualizations\\ast.dot\"";
+        // std::string outputFilePath = "\"D:\\Files\\Academics\\Semester 04\\PL\\RPAL_CLION\\Visualizations\\ast.png\"";
 
-    // std::string dotFilePath = "\"D:\\Files\\Academics\\Semester 04\\PL\\RPAL_CLION\\Visualizations\\ast.dot\"";
-    // std::string outputFilePath = "\"D:\\Files\\Academics\\Semester 04\\PL\\RPAL_CLION\\Visualizations\\ast.png\"";
+        std::string dotFilePath = "Visualizations\\ast.dot";
+        std::string outputFilePath = "Visualizations\\ast.png";
 
-    std::string dotFilePath = "Visualizations\\ast.dot";
-    std::string outputFilePath = "Visualizations\\ast.png";
+        std::string command = "dot -Tpng -Gdpi=150 " + dotFilePath + " -o " + outputFilePath;
+        system(command.c_str());
 
-    std::string command = "dot -Tpng -Gdpi=150 " + dotFilePath + " -o " + outputFilePath;
-    system(command.c_str());
-
-    // tree.png folder path message
-    std::cout << "The ast.png file is located in the Visualizations folder." << std::endl;
+        // tree.png folder path message
+        std::cout << "The ast.png file is located in the Visualizations folder." << std::endl;
+    }
 
     Tree::generate();
     TreeNode *st_root = Tree::getInstance().getSTRoot();
 
-    generateDotFile(st_root, "st.dot");
+    if (visualizeSt)
+    {
+        generateDotFile(st_root, "st.dot");
 
-    // std::string dotFilePath_st = "\"D:\\Files\\Academics\\Semester 04\\PL\\RPAL_CLION\\Visualizations\\st.dot\"";
-    // std::string outputFilePath_st = "\"D:\\Files\\Academics\\Semester 04\\PL\\RPAL_CLION\\Visualizations\\st.png\"";
+        // std::string dotFilePath_st = "\"D:\\Files\\Academics\\Semester 04\\PL\\RPAL_CLION\\Visualizations\\st.dot\"";
+        // std::string outputFilePath_st = "\"D:\\Files\\Academics\\Semester 04\\PL\\RPAL_CLION\\Visualizations\\st.png\"";
 
-    std::string dotFilePath_st = "Visualizations\\st.dot";
-    std::string outputFilePath_st = "Visualizations\\st.png";
+        std::string dotFilePath_st = "Visualizations\\st.dot";
+        std::string outputFilePath_st = "Visualizations\\st.png";
 
-    std::string command_st = "dot -Tpng -Gdpi=150 " + dotFilePath_st + " -o " + outputFilePath_st;
-    system(command_st.c_str());
+        std::string command_st = "dot -Tpng -Gdpi=150 " + dotFilePath_st + " -o " + outputFilePath_st;
+        system(command_st.c_str());
 
-    std::cout << "The st.png file is located in the Visualizations folder." << std::endl;
+        std::cout << "The st.png file is located in the Visualizations folder." << std::endl;
+    }
 
     // open the image
     // system("Visualizations\\tree.png");
