@@ -31,8 +31,6 @@
 *.out
 *.app
 
-
+.vscode/
 programmes/
-Visualisations/
-*.dot
-*.png
+Visualizations/
