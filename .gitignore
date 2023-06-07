@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+
+programmes/
+Visualisations/
+*.dot
+*.png
