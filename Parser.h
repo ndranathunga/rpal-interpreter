@@ -735,8 +735,36 @@ void Db()
         else
         {
             int n = 0;
+
             while (tokenStorage.top().value != "=" && tokenStorage.top().type == token_type::IDENTIFIER)
             {
+                Vb();
+                n++;
+            }
+
+            if (tokenStorage.top().value == "(") {
+//                tokenStorage.pop();
+//                while (tokenStorage.top().value != ")")
+//                {
+//                    Vb();
+//                    if (tokenStorage.top().value == ",")
+//                    {
+//                        tokenStorage.pop();
+//                    }
+//                    else
+//                    {
+//                        n++;
+//                        break;
+//                    }
+//                    n++;
+//                }
+//
+//                if (tokenStorage.top().value == ")") {
+//                    tokenStorage.pop();
+//                }
+//                else {
+//                    throw std::runtime_error("Syntax Error: ')' expected");
+//                }
                 Vb();
                 n++;
             }
@@ -801,18 +829,19 @@ void Vb()
             {
                 tokenStorage.pop();
                 Vl();
-                if (tokenStorage.top().value == ")")
-                {
-                    tokenStorage.pop();
-                }
-                else
-                {
-                    throw std::runtime_error("Syntax Error: ')' expected");
-                }
+            }
+//            else
+//            {
+//                throw std::runtime_error("Syntax Error: ',' expected");
+//            }
+
+            if (tokenStorage.top().value == ")")
+            {
+                tokenStorage.pop();
             }
             else
             {
-                throw std::runtime_error("Syntax Error: ',' expected");
+                throw std::runtime_error("Syntax Error: ')' expected");
             }
         }
         else
@@ -851,6 +880,8 @@ void Vl()
             build_tree("identifier", 0, true, token.value);
             n++;
         }
+
+        build_tree(",", n, false);
     }
     else
     {

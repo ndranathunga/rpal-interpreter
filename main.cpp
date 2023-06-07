@@ -138,9 +138,10 @@ void generateDotFile(TreeNode *root, std::string filename)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    if (argc < 2  || std::string(argv[1]) == "-visualize")
     {
-        std::cout << "Usage: .\\rpal20 input_file [-visualize=VALUE]" << std::endl;
+        // std::cout << "Usage: .\\rpal20 input_file [-visualize=VALUE]" << std::endl;
+        std::cout << "\033[1;31mERROR: \033[0m" << "Usage: .\\rpal20 input_file [-visualize=VALUE]" << "\n" << std::endl;
         return 1;
     }
 
@@ -246,14 +247,6 @@ int main(int argc, char *argv[])
 
         std::cout << "The st.png file is located in the Visualizations folder." << std::endl;
     }
-
-    // open the image
-    // system("Visualizations\\tree.png");
-
-    // // delete the DOT file
-    // system("del Visualizations\\tree.dot");
-    // // delete the image after it is closed
-    // system("del Visualizations\\tree.png");
 
     return 0;
 }
