@@ -1,5 +1,9 @@
-#ifndef TOKEN_H
-#define TOKEN_H
+//
+// Created by nisal on 7/19/2023.
+//
+
+#ifndef RPAL_FINAL_TOKEN_H
+#define RPAL_FINAL_TOKEN_H
 
 #include <string>
 
@@ -26,4 +30,4 @@ struct Token
     std::string value; // The value of the token
 };
 
-#endif // TOKEN_H
+#endif //RPAL_FINAL_TOKEN_H

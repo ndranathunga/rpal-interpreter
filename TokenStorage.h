@@ -1,5 +1,10 @@
-#ifndef TOKENSTORAGE_H
-#define TOKENSTORAGE_H
+//
+// Created by nisal on 7/19/2023.
+//
+
+#ifndef RPAL_FINAL_TOKENSTORAGE_H
+#define RPAL_FINAL_TOKENSTORAGE_H
+
 
 #include "Lexer.h"
 #include <vector>
@@ -13,90 +18,61 @@ class TokenStorage
 private:
     static TokenStorage instance; // Singleton instance
     std::vector<Token> tokens;    // Vector to store tokens
-    int currentPosition;          // Current position in the tokens vector
-    Lexer *lexer;                 // Pointer to the lexer
+    int currentPosition{};          // Current position in the tokens vector
+    Lexer *lexer{};                 // Pointer to the lexer
 
     // Private constructor to prevent instantiation
     TokenStorage() {}
 
     // Private destructor to prevent deletion of the instance
-    ~TokenStorage() {}
-
-    // Private copy constructor and assignment operator to prevent copying
-    TokenStorage(const TokenStorage &) = delete;
-    TokenStorage &operator=(const TokenStorage &) = delete;
+    ~TokenStorage() = default;
 
     /**
      * Retrieves tokens from the lexer and stores them in the tokens vector until the end of file token is encountered.
      */
-    void setTokens()
-    {
-        Token token;
-        do
-        {
-            token = lexer->getNextToken();
-            tokens.push_back(token);
-        } while (token.type != token_type::END_OF_FILE);
-    }
+    void setTokens();
 
 public:
+    // Private copy constructor and assignment operator to prevent copying
+    TokenStorage(const TokenStorage &) = delete;
+
+    TokenStorage &operator=(const TokenStorage &) = delete;
+
     /**
      * Returns the instance of the TokenStorage class.
      * @return The singleton instance of the TokenStorage class.
      */
-    static TokenStorage &getInstance()
-    {
-        return instance;
-    }
+    static TokenStorage &getInstance();
 
     /**
-     * Sets the lexer and initializes the tokens vector.
-     * @param lexer The lexer object to set.
+     * Sets the lexer_ and initializes the tokens vector.
+     * @param lexer_ The lexer_ object to set.
      */
-    void setLexer(Lexer &lexer)
-    {
-        this->lexer = &lexer;
-        setTokens();
-        currentPosition = 0;
-    }
+    void setLexer(Lexer &lexer_);
 
     /**
      * Returns a reference to the current token at the top of the tokens vector.
      * @return A reference to the current token.
      */
-    Token &top()
-    {
-        return tokens[currentPosition];
-    }
+    Token &top();
 
     /**
      * Removes and returns the current token at the top of the tokens vector.
      * @return The current token.
      */
-    Token &pop()
-    {
-        return tokens[currentPosition++];
-    }
+    Token &pop();
 
     /**
      * Resets the current position to the beginning of the tokens vector.
      */
-    void reset()
-    {
-        currentPosition = 0;
-    }
+    [[maybe_unused]] void reset();
 
     /**
      * Clears the tokens vector and sets the lexer to nullptr.
      * This method should be called when the TokenStorage instance is no longer needed.
      */
-    static void destroyInstance()
-    {
-        instance.lexer = nullptr;
-        instance.tokens.clear();
-    }
+    static void destroyInstance();
 };
 
-TokenStorage TokenStorage::instance; // Initialize the static instance
 
-#endif // TOKENSTORAGE_H
+#endif //RPAL_FINAL_TOKENSTORAGE_H
