@@ -71,15 +71,15 @@ int main(int argc, char *argv[])
     TokenStorage &tokenStorage = TokenStorage::getInstance();
     tokenStorage.setLexer(lexer);
 
-    // Token token;
-    // do
-    // {
-    //     token = TokenStorage::getInstance().pop();
-    //     std::cout << "Type: " << gettoken_typeName(token.type) << ", Value: " << token.value << std::endl;
-    //     // std::cout << token.value << std::endl;
-    // } while (token.type != token_type::END_OF_FILE);
-
-    // TokenStorage::getInstance().reset();
+//     Token token;
+//     do
+//     {
+//         token = TokenStorage::getInstance().pop();
+//         std::cout << "Type: " << gettoken_typeName(token.type) << ", Value: " << token.value << std::endl;
+//         // std::cout << token.value << std::endl;
+//     } while (token.type != token_type::END_OF_FILE);
+//
+//     TokenStorage::getInstance().reset();
 
     Parser::parse();
     TokenStorage::destroyInstance();
@@ -120,6 +120,8 @@ int main(int argc, char *argv[])
     CSE cse = CSE();
     cse.create_cs(Tree::getInstance().getSTRoot());
     cse.evaluate();
+
+    std::cout << std::endl;
 
     return 0;
 }

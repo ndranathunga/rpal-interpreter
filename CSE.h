@@ -55,7 +55,7 @@ private:
     int env{};
     int cs_index{}; // for delta, tau, eeta, lambda nodes
     std::vector<std::string> bound_variables;
-    std::vector<std::pair<ObjType, std::string>> list_elements;
+    std::vector<CseNode> list_elements;
     bool is_single_bound_var = true;
 
 public:
@@ -76,7 +76,7 @@ public:
     // Constructor for lambda (in stack) nodes with bound variables
     CseNode(ObjType node_type, int cs_index, std::vector<std::string> bound_variables, int env);
 
-    CseNode(ObjType node_type, std::vector<std::pair<ObjType, std::string>> list_elements);
+    CseNode(ObjType node_type, std::vector<CseNode> list_elements);
 
     // Getters
     [[nodiscard]] ObjType get_node_type() const;
@@ -91,7 +91,7 @@ public:
 
     [[nodiscard]] std::vector<std::string> get_var_list() const;
 
-    std::vector<std::pair<ObjType, std::string>> get_list_elements();
+    std::vector<CseNode> get_list_elements();
 
     CseNode set_env(int env_);
 };
@@ -150,9 +150,9 @@ public:
 
 class Env {
 private:
-    std::unordered_map<std::string, std::pair<ObjType, std::string>> variables;
-    std::unordered_map<std::string, CseNode *> lambdas;
-    std::unordered_map<std::string, std::vector<std::pair<ObjType, std::string>>> lists;
+    std::unordered_map<std::string, CseNode> variables;
+    std::unordered_map<std::string, CseNode> lambdas;
+    std::unordered_map<std::string, std::vector<CseNode>> lists;
     [[maybe_unused]] bool is_lambda = false;
     Env *parent_env;
 
@@ -164,24 +164,24 @@ public:
     explicit Env(Env *parent_env);
 
     // add variable to environment
-    void add_variable(const std::string &identifier, const std::pair<ObjType, std::string> &value);
+    void add_variable(const std::string &identifier, const CseNode &value);
 
     [[maybe_unused]] void add_variables(const std::vector<std::string> &identifiers,
-                       const std::vector<std::pair<ObjType, std::string>> &values);
+                       const std::vector<CseNode> &values);
 
-    void add_list(const std::string &identifier, const std::vector<std::pair<ObjType, std::string>> &list_elements);
+    void add_list(const std::string &identifier, const std::vector<CseNode>& list_elements);
 
     // add lambda to environment
     void add_lambda(const std::string &identifier, const CseNode &lambda);
 
     // get variable from environment
-    std::pair<ObjType, std::string> get_variable(const std::string &identifier);
+    CseNode get_variable(const std::string &identifier);
 
     // get lambda from environment
     CseNode get_lambda(const std::string &identifier);
 
     // get list from environment
-    std::vector<std::pair<ObjType, std::string>> get_list(const std::string &identifier);
+    std::vector<CseNode> get_list(const std::string &identifier);
 };
 
 class CSE {

@@ -94,6 +94,14 @@ int generateDotFileHelper(TreeNode *node, std::ofstream &file, int parent = -1, 
 
     // Escape label characters if necessary
     std::string escapedLabel = node->getLabel();
+
+    size_t pos1 = escapedLabel.find('&');
+    while (pos1 != std::string::npos)
+    {
+        escapedLabel.replace(pos1, 1, "&amp;");
+        pos1 = escapedLabel.find('&', pos1 + 5); // Move to the next occurrence after the replaced token
+    }
+
     size_t pos = escapedLabel.find('>');
     while (pos != std::string::npos)
     {
@@ -104,6 +112,14 @@ int generateDotFileHelper(TreeNode *node, std::ofstream &file, int parent = -1, 
     // Prepare label and value strings for the dot file
     std::string labelStr = (escapedLabel.empty()) ? "&nbsp;" : escapedLabel;
     std::string valueStr = (node->getValue().empty()) ? "&nbsp;" : node->getValue();
+
+    size_t pos2 = valueStr.find('\n');
+
+    while (pos2 != std::string::npos)
+    {
+        valueStr.replace(pos2, 1, "\\n");
+        pos2 = valueStr.find('\n', pos2 + 2);
+    }
 
     // Write the node details to the dot file
     file << "    node" << currentNode << " [label=<";

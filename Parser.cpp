@@ -626,7 +626,9 @@ void Da()
         tokenStorage.pop();
         Dr();
         n++;
-        build_tree("and", 2, false);
+    }
+    if (n > 0) {
+        build_tree("and", n + 1, false);
     }
 }
 

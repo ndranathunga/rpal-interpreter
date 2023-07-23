@@ -9,7 +9,7 @@
 
 
 std::vector<std::string> built_in_functions = {"Print", "Order", "Y*", "Conc", "Stem", "Stern", "Isinteger", "Isstring",
-                                               "Istuple", "Isempty"};
+                                               "Istuple", "Isempty", "ItoS"};
 
 
 /*
@@ -51,7 +51,7 @@ CseNode::CseNode(ObjType node_type, int cs_index, std::vector<std::string> bound
     this->bound_variables = std::move(bound_variables);
 }
 
-CseNode::CseNode(ObjType node_type, std::vector<std::pair<ObjType, std::string>> list_elements) {
+CseNode::CseNode(ObjType node_type, std::vector<CseNode> list_elements) {
     this->node_type = node_type;
     this->list_elements = std::move(list_elements);
 }
@@ -80,7 +80,7 @@ std::vector<std::string> CseNode::get_var_list() const {
     return bound_variables;
 }
 
-std::vector<std::pair<ObjType, std::string>> CseNode::get_list_elements() {
+std::vector<CseNode> CseNode::get_list_elements() {
     return list_elements;
 }
 
@@ -155,18 +155,18 @@ Env::Env(Env *parent_env) {
     this->parent_env = parent_env;
 }
 
-void Env::add_variable(const std::string &identifier, const std::pair<ObjType, std::string> &value) {
+void Env::add_variable(const std::string &identifier, const CseNode &value) {
     variables[identifier] = value;
 }
 
 [[maybe_unused]] void Env::add_variables(const std::vector<std::string> &identifiers,
-                        const std::vector<std::pair<ObjType, std::string>> &values) {
+                                         const std::vector<CseNode> &values) {
     for (int i = 0; i < identifiers.size(); i++) {
         variables[identifiers[i]] = values[i];
     }
 }
 
-void Env::add_list(const std::string &identifier, const std::vector<std::pair<ObjType, std::string>> &list_elements) {
+void Env::add_list(const std::string &identifier, const std::vector<CseNode> &list_elements) {
     lists[identifier] = list_elements;
 }
 
@@ -176,19 +176,19 @@ void Env::add_lambda(const std::string &identifier, const CseNode &lambda) {
     // check the node type and create new object
     if (lambda.get_node_type() == ObjType::LAMBDA) {
         if (lambda.get_is_single_bound_var()) {
-            lambdas[identifier] = new CseNode(ObjType::LAMBDA,
-                                              lambda.get_node_value(), lambda.get_cs_index(), lambda.get_env());
+            lambdas[identifier] = CseNode(ObjType::LAMBDA,
+                                          lambda.get_node_value(), lambda.get_cs_index(), lambda.get_env());
         } else {
-            lambdas[identifier] = new CseNode(ObjType::LAMBDA, lambda.get_cs_index(),
-                                              lambda.get_var_list(), lambda.get_env());
+            lambdas[identifier] = CseNode(ObjType::LAMBDA, lambda.get_cs_index(),
+                                          lambda.get_var_list(), lambda.get_env());
         }
     } else if (lambda.get_node_type() == ObjType::EETA) {
         if (lambda.get_is_single_bound_var()) {
-            lambdas[identifier] = new CseNode(ObjType::EETA,
-                                              lambda.get_node_value(), lambda.get_cs_index(), lambda.get_env());
+            lambdas[identifier] = CseNode(ObjType::EETA,
+                                          lambda.get_node_value(), lambda.get_cs_index(), lambda.get_env());
         } else {
-            lambdas[identifier] = new CseNode(ObjType::EETA, lambda.get_cs_index(),
-                                              lambda.get_var_list(), lambda.get_env());
+            lambdas[identifier] = CseNode(ObjType::EETA, lambda.get_cs_index(),
+                                          lambda.get_var_list(), lambda.get_env());
         }
     } else {
         throw std::runtime_error("Invalid lambda node type");
@@ -196,7 +196,7 @@ void Env::add_lambda(const std::string &identifier, const CseNode &lambda) {
 }
 
 // NOLINTNEXTLINE
-std::pair<ObjType, std::string> Env::get_variable(const std::string &identifier) {
+CseNode Env::get_variable(const std::string &identifier) {
     if (variables.find(identifier) != variables.end()) {
         return variables[identifier];
     } else if (parent_env != nullptr) {
@@ -209,7 +209,7 @@ std::pair<ObjType, std::string> Env::get_variable(const std::string &identifier)
 // NOLINTNEXTLINE
 CseNode Env::get_lambda(const std::string &identifier) {
     if (lambdas.find(identifier) != lambdas.end()) {
-        return *lambdas[identifier];
+        return lambdas[identifier];
     } else if (parent_env != nullptr) {
         return parent_env->get_lambda(identifier);
     } else {
@@ -218,7 +218,7 @@ CseNode Env::get_lambda(const std::string &identifier) {
 }
 
 // NOLINTNEXTLINE
-std::vector<std::pair<ObjType, std::string>> Env::get_list(const std::string &identifier) {
+std::vector<CseNode> Env::get_list(const std::string &identifier) {
     if (lists.find(identifier) != lists.end()) {
         return lists[identifier];
     } else if (parent_env != nullptr) {
@@ -227,6 +227,7 @@ std::vector<std::pair<ObjType, std::string>> Env::get_list(const std::string &id
         throw std::runtime_error("Identifier: " + identifier + " not found");
     }
 }
+
 
 // NOLINTNEXTLINE
 void CSE::create_cs(TreeNode *root, ControlStructure *current_cs, int current_cs_index) {
@@ -337,32 +338,33 @@ void CSE::evaluate() {
             stack.add_node(top_of_cs);
             top_of_cs = main_control_structure.pop_and_return_last_node();
         } else if (top_of_cs.get_node_type() == ObjType::IDENTIFIER) {
-            // if node value is in built_in_functions add the node to the stack
-            if (std::find(built_in_functions.begin(), built_in_functions.end(), top_of_cs.get_node_value()) !=
-                built_in_functions.end()) {
-                stack.add_node(top_of_cs);
-            } else if (top_of_cs.get_node_value() == "nil") {
-                stack.add_node(CseNode(ObjType::LIST, std::vector<std::pair<ObjType, std::string>>()));
-            } else {
-                std::pair<ObjType, std::string> value;
-                CseNode value_l;
-                std::vector<std::pair<ObjType, std::string>> list;
+            CseNode value;
+            CseNode value_l;
+            std::vector<CseNode> list;
 
+            try {
+                value = envs[env_stack.back()]->get_variable(top_of_cs.get_node_value());
+                stack.add_node(CseNode(value.get_node_type(), value.get_node_value()));
+            }
+            catch (std::runtime_error &e) {
                 try {
-                    value = envs[env_stack.back()]->get_variable(top_of_cs.get_node_value());
-                    stack.add_node(CseNode(value.first, value.second));
+                    value_l = envs[env_stack.back()]->get_lambda(top_of_cs.get_node_value());
+                    stack.add_node(value_l);
                 }
                 catch (std::runtime_error &e) {
                     try {
-                        value_l = envs[env_stack.back()]->get_lambda(top_of_cs.get_node_value());
-                        stack.add_node(value_l);
+                        list = envs[env_stack.back()]->get_list(top_of_cs.get_node_value());
+                        stack.add_node(CseNode(ObjType::LIST, list));
                     }
                     catch (std::runtime_error &e) {
-                        try {
-                            list = envs[env_stack.back()]->get_list(top_of_cs.get_node_value());
-                            stack.add_node(CseNode(ObjType::LIST, list));
-                        }
-                        catch (std::runtime_error &e) {
+                        // if node value is in built_in_functions add the node to the stack
+                        if (std::find(built_in_functions.begin(), built_in_functions.end(),
+                                      top_of_cs.get_node_value()) !=
+                            built_in_functions.end()) {
+                            stack.add_node(top_of_cs);
+                        } else if (top_of_cs.get_node_value() == "nil") {
+                            stack.add_node(CseNode(ObjType::LIST, std::vector<CseNode>()));
+                        } else {
                             throw std::runtime_error("Variable not found: " + top_of_cs.get_node_value());
                         }
                     }
@@ -387,8 +389,51 @@ void CSE::evaluate() {
                 if (value.get_node_type() == ObjType::LAMBDA || value.get_node_type() == ObjType::EETA) {
                     new_env->add_lambda(top_of_stack.get_node_value(), value);
                 } else if (value.get_node_type() == ObjType::STRING || value.get_node_type() == ObjType::INTEGER) {
-                    new_env->add_variable(top_of_stack.get_node_value(),
-                                          std::pair(value.get_node_type(), value.get_node_value()));
+                    new_env->add_variable(top_of_stack.get_node_value(), value);
+                } else if (value.get_node_type() == ObjType::LIST && !top_of_stack.get_is_single_bound_var()) {
+                    // TODO
+                    std::vector<std::string> var_list = top_of_stack.get_var_list();
+                    std::vector<CseNode> list_items = value.get_list_elements();
+
+//                        std::vector<std::string> non_list_var;
+                    std::vector<std::string> list_var;
+                    std::vector<CseNode> temp_list = std::vector<CseNode>();
+
+                    int var_count = 0;
+
+                    int list_element_count = 0;
+                    bool creating_list = false;
+
+                    for (const auto &i: list_items) {
+                        if (creating_list) {
+                            temp_list.push_back(i);
+                            list_element_count--;
+
+                            if (list_element_count == 0) {
+                                new_env->add_list(var_list[var_count++], temp_list);
+                                temp_list = std::vector<CseNode>();
+                                creating_list = false;
+                            }
+                        } else {
+                            if (i.get_node_type() == ObjType::LIST) {
+                                list_element_count = std::stoi(i.get_node_value());
+                                if (list_element_count == 0) {
+                                    new_env->add_list(var_list[var_count++], temp_list);
+                                    temp_list = std::vector<CseNode>();
+                                } else {
+                                    creating_list = true;
+                                }
+                            } else if (i.get_node_type() == ObjType::LAMBDA) {
+                                new_env->add_lambda(var_list[var_count++], i);
+                            } else {
+                                new_env->add_variable(var_list[var_count++], i);
+                            }
+                        }
+                    }
+
+                    if (creating_list) {
+                        new_env->add_list(var_list[var_count], temp_list);
+                    }
                 } else if (value.get_node_type() == ObjType::LIST) {
                     new_env->add_list(top_of_stack.get_node_value(), value.get_list_elements());
                 } else {
@@ -406,7 +451,7 @@ void CSE::evaluate() {
 
                 if (identifier == "Print") {
                     CseNode value = stack.pop_and_return_last_node();
-                    std::vector<std::pair<ObjType, std::string>> list_elements = value.get_list_elements();
+                    std::vector<CseNode> list_elements = value.get_list_elements();
 
                     if (value.get_node_type() == ObjType::LIST) {
                         std::cout << "(";
@@ -414,11 +459,11 @@ void CSE::evaluate() {
                         std::vector<int> count_stack;
 
                         for (int i = 0; i < value.get_list_elements().size(); i++) {
-                            if (list_elements[i].first == ObjType::LIST) {
-                                count_stack.push_back(std::stoi(list_elements[i].second));
+                            if (list_elements[i].get_node_type() == ObjType::LIST) {
+                                count_stack.push_back(std::stoi(list_elements[i].get_node_value()));
                                 std::cout << "(";
                             } else {
-                                std::cout << list_elements[i].second;
+                                std::cout << list_elements[i].get_node_value();
 
                                 if (!count_stack.empty()) {
                                     // reduce 1 from all elements in count_stack
@@ -443,7 +488,7 @@ void CSE::evaluate() {
                                 }
                             }
                         }
-                        std::cout << ")" << std::endl;
+                        std::cout << ")";
                     } else if (value.get_node_type() == ObjType::ENV || value.get_node_value() == "dummy") {
                         std::cout << "dummy";
                     } else if (value.get_node_type() == ObjType::LAMBDA) {
@@ -489,8 +534,22 @@ void CSE::evaluate() {
                 } else if (identifier == "Order") {
                     CseNode value = stack.pop_and_return_last_node();
                     if (value.get_node_type() == ObjType::LIST) {
-                        stack.add_node(
-                                CseNode(ObjType::INTEGER, std::to_string(value.get_list_elements().size())));
+                        int count = 0;
+                        int list_elem_skip = 0;
+
+                        for (const auto &i: value.get_list_elements()) {
+                            if (i.get_node_type() == ObjType::LIST && list_elem_skip == 0) {
+                                list_elem_skip += std::stoi(i.get_node_value());
+                                count++;
+                            } else if (list_elem_skip == 0) {
+                                count++;
+                            } else {
+                                list_elem_skip--;
+                                continue;
+                            }
+                        }
+
+                        stack.add_node(CseNode(ObjType::INTEGER, std::to_string(count)));
                     } else {
                         throw std::runtime_error("Invalid type for Order: " + value.get_node_value());
                     }
@@ -537,16 +596,26 @@ void CSE::evaluate() {
                     } else {
                         throw std::runtime_error("Invalid type for Y*: " + lambda.get_node_value());
                     }
+                } else if (identifier == "ItoS") {
+                    CseNode arg = stack.pop_and_return_last_node();
+
+                    if (arg.get_node_type() == ObjType::INTEGER) {
+                        stack.add_node(CseNode(ObjType::STRING, arg.get_node_value()));
+                    } else {
+                        throw std::runtime_error("Invalid type for ItoS: " + arg.get_node_value());
+                    }
                 }
             } else if (top_of_stack.get_node_type() == ObjType::EETA) {
                 stack.add_node(top_of_stack);
 
                 if (top_of_stack.get_is_single_bound_var()) {
-                    stack.add_node(CseNode(ObjType::LAMBDA, top_of_stack.get_node_value(), top_of_stack.get_cs_index(),
-                                           top_of_stack.get_env()));
+                    stack.add_node(
+                            CseNode(ObjType::LAMBDA, top_of_stack.get_node_value(), top_of_stack.get_cs_index(),
+                                    top_of_stack.get_env()));
                 } else {
-                    stack.add_node(CseNode(ObjType::LAMBDA, top_of_stack.get_cs_index(), top_of_stack.get_var_list(),
-                                           top_of_stack.get_env()));
+                    stack.add_node(
+                            CseNode(ObjType::LAMBDA, top_of_stack.get_cs_index(), top_of_stack.get_var_list(),
+                                    top_of_stack.get_env()));
                 }
 
                 main_control_structure.add_node(CseNode(ObjType::GAMMA, ""));
@@ -556,23 +625,45 @@ void CSE::evaluate() {
 
                 if (second_arg.get_node_type() == ObjType::INTEGER) {
                     int index = std::stoi(second_arg.get_node_value());
-                    if (index < 0 || index > top_of_stack.get_list_elements().size()) {
-                        throw std::runtime_error("Index out of bounds: " + second_arg.get_node_value());
-                    } else {
-                        std::vector<std::pair<ObjType, std::string>> list_elements = top_of_stack.get_list_elements();
 
-                        int i = 1;
-                        std::pair<ObjType, std::string> element;
+                    int current_index = 0;
+                    int list_element_pos = 0;
+                    int list_elem_skip = 0;
+                    bool is_list = false;
 
-                        for (auto &list_element: list_elements) {
-                            if (i == index) {
-                                element = list_element;
+                    for (const auto &i: top_of_stack.get_list_elements()) {
+                        if (i.get_node_type() == ObjType::LIST && list_elem_skip == 0) {
+                            list_elem_skip = std::stoi(i.get_node_value());
+                            current_index++;
+
+                            if (index == current_index) {
+                                is_list = true;
                                 break;
                             }
-                            i++;
+                        } else if (list_elem_skip == 0) {
+                            current_index++;
+
+                            if (index == current_index) {
+                                break;
+                            }
+                        } else {
+                            list_elem_skip--;
+                        }
+                        list_element_pos++;
+                    }
+
+                    std::vector<CseNode> list_elements = std::vector<CseNode>();
+
+                    if (is_list) {
+                        int length = std::stoi(top_of_stack.get_list_elements()[list_element_pos].get_node_value());
+
+                        for (int i = 0; i < length; i++) {
+                            list_elements.push_back(top_of_stack.get_list_elements()[list_element_pos + i + 1]);
                         }
 
-                        stack.add_node(CseNode(ObjType::INTEGER, element.second));
+                        stack.add_node(CseNode(ObjType::LIST, list_elements));
+                    } else {
+                        stack.add_node(top_of_stack.get_list_elements()[list_element_pos]);
                     }
                 } else {
                     throw std::runtime_error("Invalid type for Index: " + second_arg.get_node_value());
@@ -665,8 +756,8 @@ void CSE::evaluate() {
             } else if (operator_ == "aug") {
                 if (first.get_node_type() == ObjType::LIST) {
                     if (second.get_node_type() == ObjType::LIST) {
-                        std::vector<std::pair<ObjType, std::string>> elements = first.get_list_elements();
-                        std::vector<std::pair<ObjType, std::string>> elements_2 = second.get_list_elements();
+                        std::vector<CseNode> elements = first.get_list_elements();
+                        std::vector<CseNode> elements_2 = second.get_list_elements();
 
                         elements.emplace_back(ObjType::LIST, std::to_string(elements_2.size()));
 
@@ -678,7 +769,7 @@ void CSE::evaluate() {
                     } else if (second.get_node_type() == ObjType::INTEGER ||
                                second.get_node_type() == ObjType::BOOLEAN ||
                                second.get_node_type() == ObjType::STRING) {
-                        std::vector<std::pair<ObjType, std::string>> elements = first.get_list_elements();
+                        std::vector<CseNode> elements = first.get_list_elements();
 
                         elements.emplace_back(second.get_node_type(), second.get_node_value());
                         stack.add_node(CseNode(ObjType::LIST, elements));
@@ -694,28 +785,33 @@ void CSE::evaluate() {
                 } else {
                     stack.add_node(CseNode(ObjType::BOOLEAN, "false"));
                 }
+            } else if (operator_ == "&") {
+                if (first.get_node_value() == "true" && second.get_node_value() == "true") {
+                    stack.add_node(CseNode(ObjType::BOOLEAN, "true"));
+                } else {
+                    stack.add_node(CseNode(ObjType::BOOLEAN, "false"));
+                }
             } else {
                 throw std::runtime_error("Invalid operator: " + operator_);
             }
 
             top_of_cs = main_control_structure.pop_and_return_last_node();
         } else if (top_of_cs.get_node_type() == ObjType::TAU) {
-            std::vector<std::pair<ObjType, std::string>> tau_elements;
+            std::vector<CseNode> tau_elements;
             int tau_size = std::stoi(top_of_cs.get_node_value());
 
             for (int i = 0; i < tau_size; i++) {
                 CseNode node = stack.pop_and_return_last_node();
 
                 if (node.get_node_type() == ObjType::LIST) {
-                    std::vector<std::pair<ObjType, std::string>> elements = node.get_list_elements();
+                    std::vector<CseNode> elements = node.get_list_elements();
                     tau_elements.emplace_back(ObjType::LIST, std::to_string(elements.size()));
 
                     for (auto &element: elements) {
                         tau_elements.push_back(element);
                     }
                 } else {
-                    tau_elements.emplace_back(node.get_node_type(),
-                                              node.get_node_value());
+                    tau_elements.push_back(node);
                 }
             }
 
@@ -779,7 +875,8 @@ void CSE::evaluate() {
 }
 
 bool isOperator(const std::string &label) {
-    std::vector<std::string> operators_ = {"+", "-", "/", "*", "aug", "neg", "not", "eq", "gr", "ge", "ls", "le", "ne", "or"};
+    std::vector<std::string> operators_ = {"+", "-", "/", "*", "aug", "neg", "not", "eq", "gr", "ge", "ls", "le", "ne",
+                                           "or", "&"};
 
     auto it = std::find(operators_.begin(), operators_.end(), label);
     return it != operators_.end();
