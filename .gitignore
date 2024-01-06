@@ -34,6 +34,7 @@
 .vscode/
 programmes/
 Visualizations/
+build/
 
 *.dot
 *.png

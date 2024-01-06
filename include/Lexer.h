@@ -35,9 +35,14 @@ public:
      * @brief Retrieves the next token from the input string.
      * @return The next token.
      */
-    Token getNextToken();
+    virtual Token getNextToken();
+
+    virtual ~Lexer() {}
 
 private:
+    std::string input;
+    size_t currentPosition;
+
     /**
      * @brief Skips whitespace characters in the input string.
      */
@@ -50,9 +55,8 @@ private:
      */
     static bool isOperatorSymbol(char c);
 
-private:
-    std::string input;
-    size_t currentPosition;
+protected:
+    const std::string& getInput() const { return input; }
 };
 
 #endif //RPAL_FINAL_LEXER_H
