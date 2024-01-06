@@ -34,7 +34,7 @@
 .vscode/
 programmes/
 Visualizations/
-googletest/
+# googletest/
 build/
 
 *.dot
